@@ -1128,7 +1128,6 @@ static int DisplayHTMLPage(struct webview *w, const char *headers) {
 
     VariantInit(&vheaders);
     vheaders.vt = VT_BSTR;
-    CString strHeaders(headers);
 
 #ifndef UNICODE
     {
@@ -1156,7 +1155,7 @@ static int DisplayHTMLPage(struct webview *w, const char *headers) {
       return (-6);
     }
 
-    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, strHeaders.GetLength() > 0 ? vheaders : 0);
+    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, &vheaders);
     VariantClear(&myURL);
     if (!isDataURL) {
       return 0;

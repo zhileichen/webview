@@ -34,7 +34,7 @@ static inline void CgoWebViewFree(void *w) {
 	free(w);
 }
 
-static inline void *CgoWebViewCreate(int width, int height, char *title, char *url, int resizable, int debug) {
+static inline void *CgoWebViewCreate(int width, int height, char *title, char *url, char* headers, int resizable, int debug) {
 	struct webview *w = (struct webview *) calloc(1, sizeof(*w));
 	w->width = width;
 	w->height = height;
@@ -43,7 +43,7 @@ static inline void *CgoWebViewCreate(int width, int height, char *title, char *u
 	w->resizable = resizable;
 	w->debug = debug;
 	w->external_invoke_cb = (webview_external_invoke_cb_t) _webviewExternalInvokeCallback;
-	if (webview_init(w) != 0) {
+	if (webview_init(w, headers) != 0) {
 		CgoWebViewFree(w);
 		return NULL;
 	}
@@ -134,10 +134,7 @@ func Open(title, url string, w, h int, resizable bool, headers string) error {
 		resize = C.int(1)
 	}
 
-	headersStr := C.CString("")
-	if headers != nil {
-		headersStr = C.CString(headers)
-	}
+	headersStr := C.CString(headers)
 
 	r := C.webview(titleStr, urlStr, C.int(w), C.int(h), resize, headersStr)
 	if r != 0 {
@@ -297,7 +294,7 @@ func New(settings Settings) WebView {
 	}
 	w := &webview{}
 	w.w = C.CgoWebViewCreate(C.int(settings.Width), C.int(settings.Height),
-		C.CString(settings.Title), C.CString(settings.URL),
+		C.CString(settings.Title), C.CString(settings.URL), C.CString(settings.Headers),
 		C.int(boolToInt(settings.Resizable)), C.int(boolToInt(settings.Debug)))
 	m.Lock()
 	if settings.ExternalInvokeCallback != nil {
