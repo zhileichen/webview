@@ -151,9 +151,9 @@ static const char *webview_check_url(const char *url) {
 }
 
 WEBVIEW_API int webview(const char *title, const char *url, int width,
-                        int height, int resizable);
+                        int height, int resizable, const char *headers);
 
-WEBVIEW_API int webview_init(struct webview *w);
+WEBVIEW_API int webview_init(struct webview *w, const char* headers);
 WEBVIEW_API int webview_loop(struct webview *w, int blocking);
 WEBVIEW_API int webview_eval(struct webview *w, const char *js);
 WEBVIEW_API int webview_inject_css(struct webview *w, const char *css);
@@ -176,7 +176,7 @@ WEBVIEW_API void webview_print_log(const char *s);
 #undef WEBVIEW_IMPLEMENTATION
 
 WEBVIEW_API int webview(const char *title, const char *url, int width,
-                        int height, int resizable) {
+                        int height, int resizable, const char *headers) {
   struct webview webview;
   memset(&webview, 0, sizeof(webview));
   webview.title = title;
@@ -184,7 +184,7 @@ WEBVIEW_API int webview(const char *title, const char *url, int width,
   webview.width = width;
   webview.height = height;
   webview.resizable = resizable;
-  int r = webview_init(&webview);
+  int r = webview_init(&webview, headers);
   if (r != 0) {
     return r;
   }
@@ -289,7 +289,7 @@ static gboolean webview_context_menu_cb(WebKitWebView *webview,
   return TRUE;
 }
 
-WEBVIEW_API int webview_init(struct webview *w) {
+WEBVIEW_API int webview_init(struct webview *w, const char *headers) {
   if (gtk_init_check(0, NULL) == FALSE) {
     return -1;
   }
@@ -1100,7 +1100,7 @@ error:
 }
 
 #define WEBVIEW_DATA_URL_PREFIX "data:text/html,"
-static int DisplayHTMLPage(struct webview *w) {
+static int DisplayHTMLPage(struct webview *w, const char *headers) {
   IWebBrowser2 *webBrowser2;
   VARIANT myURL;
   LPDISPATCH lpDispatch;
@@ -1141,7 +1141,9 @@ static int DisplayHTMLPage(struct webview *w) {
       webBrowser2->lpVtbl->Release(webBrowser2);
       return (-6);
     }
-    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, 0);
+    CString strHeaders(headers);
+    COleVariant vHeaders(strHeaders);
+    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, strHeaders.GetLength() > 0 ? vHeaders : 0);
     VariantClear(&myURL);
     if (!isDataURL) {
       return 0;
@@ -1258,7 +1260,7 @@ static int webview_fix_ie_compat_mode() {
   return 0;
 }
 
-WEBVIEW_API int webview_init(struct webview *w) {
+WEBVIEW_API int webview_init(struct webview *w, const char * headers) {
   WNDCLASSEX wc;
   HINSTANCE hInstance;
   DWORD style;
@@ -1313,7 +1315,7 @@ WEBVIEW_API int webview_init(struct webview *w) {
 
   SetWindowLongPtr(w->priv.hwnd, GWLP_USERDATA, (LONG_PTR)w);
 
-  DisplayHTMLPage(w);
+  DisplayHTMLPage(w, headers);
 
   SetWindowText(w->priv.hwnd, w->title);
   ShowWindow(w->priv.hwnd, SW_SHOWDEFAULT);
@@ -1818,7 +1820,7 @@ static void make_nav_policy_decision(id self, SEL cmd, id webView, id response,
   }
 }
 
-WEBVIEW_API int webview_init(struct webview *w) {
+WEBVIEW_API int webview_init(struct webview *w, const char *headers) {
   w->priv.pool = objc_msgSend((id)objc_getClass("NSAutoreleasePool"),
                               sel_registerName("new"));
   objc_msgSend((id)objc_getClass("NSApplication"),
