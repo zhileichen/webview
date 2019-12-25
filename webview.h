@@ -1103,6 +1103,7 @@ error:
 static int DisplayHTMLPage(struct webview *w, const char *headers) {
   IWebBrowser2 *webBrowser2;
   VARIANT myURL;
+  VARIANT vheaders;
   LPDISPATCH lpDispatch;
   IHTMLDocument2 *htmlDoc2;
   BSTR bstr;
@@ -1124,6 +1125,11 @@ static int DisplayHTMLPage(struct webview *w, const char *headers) {
     }
     VariantInit(&myURL);
     myURL.vt = VT_BSTR;
+
+    VariantInit(&vheaders);
+    vheaders.vt = VT_BSTR;
+    CString strHeaders(headers);
+
 #ifndef UNICODE
     {
       wchar_t *buffer = webview_to_utf16(webPageName);
@@ -1132,18 +1138,25 @@ static int DisplayHTMLPage(struct webview *w, const char *headers) {
       }
       myURL.bstrVal = SysAllocString(buffer);
       GlobalFree(buffer);
+
+      buffer = webview_to_utf16(headers);
+      if (buffer == NULL) {
+        goto badalloc;
+      }
+      vheaders.bstrVal = SysAllocString(buffer);
+      GlobalFree(buffer);
     }
 #else
     myURL.bstrVal = SysAllocString(webPageName);
+    vheaders.bstrVal = SysAllocString(headers);
 #endif
     if (!myURL.bstrVal) {
     badalloc:
       webBrowser2->lpVtbl->Release(webBrowser2);
       return (-6);
     }
-    CString strHeaders(headers);
-    COleVariant vHeaders(strHeaders);
-    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, strHeaders.GetLength() > 0 ? vHeaders : 0);
+
+    webBrowser2->lpVtbl->Navigate2(webBrowser2, &myURL, 0, 0, 0, strHeaders.GetLength() > 0 ? vheaders : 0);
     VariantClear(&myURL);
     if (!isDataURL) {
       return 0;
